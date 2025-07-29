@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Impact vs Effort Analyzer</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h1>{{ goal }}</h1>
+    <form method="POST">
+        <textarea name="task_input" rows="10" cols="50" placeholder="Paste your JSON here..."></textarea><br>
+        <button type="submit">Analyze</button>
+    </form>
+
+    <canvas id="effortChart" width="400" height="400"></canvas>
+
+    {% if raw_json %}
+    <form method="POST" action="/download">
+        <input type="hidden" name="json_data" value='{{ raw_json | tojson | safe }}'>
+        <button type="submit">Download JSON</button>
+    </form>
+    {% endif %}
+
+    <script>
+        const chartData = JSON.parse('{{ chart_data | tojson | safe }}');
+        const ctx = document.getElementById('effortChart').getContext('2d');
+
+        const data = {
+            datasets: [{
+                label: "Tasks",
+                data: chartData.map(t => ({ x: t.effort, y: t.impact })),
+                pointRadius: 12,
+                pointStyle: 'circle',
+                backgroundColor: "#2b8a3e"
+            }]
+        };
+
+        new Chart(ctx, {
+            type: "scatter",
+            data: data,
+            options: {
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const t = chartData[context.dataIndex];
+                                return `${t.emoji} ${t.label} → Effort: ${t.effort}, Impact: ${t.impact}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { title: { text: "Effort", display: true } },
+                    y: { title: { text: "Impact", display: true } }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
