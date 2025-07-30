@@ -40,24 +40,50 @@ def get_ai_analysis(goal, tasks):
     """
     Get AI analysis using OpenAI API or fallback to Gemini
     """
+    print("=== API KEY DEBUG INFO ===")
+    
+    # Debug environment loading
+    print(f"Current working directory: {os.getcwd()}")
+    print(f".env file exists: {os.path.exists('.env')}")
+    
     # Try OpenAI first (if API key is available)
     openai_key = os.getenv('OPENAI_API_KEY')
+    print(f"OpenAI key found: {'Yes' if openai_key else 'No'}")
     if openai_key:
+        print(f"OpenAI key length: {len(openai_key)}")
+        print(f"OpenAI key starts with: {openai_key[:10]}...")
+        # Remove quotes if present
+        openai_key = openai_key.strip("'\"")
+        print(f"Trying OpenAI API...")
         try:
-            return call_openai_api(goal, tasks, openai_key)
+            result = call_openai_api(goal, tasks, openai_key)
+            print("OpenAI API succeeded!")
+            return result
         except Exception as e:
             print(f"OpenAI API failed: {e}")
+            import traceback
+            traceback.print_exc()
     
     # Try Gemini as fallback
     gemini_key = os.getenv('GEMINI_API_KEY')
+    print(f"Gemini key found: {'Yes' if gemini_key else 'No'}")
     if gemini_key:
+        print(f"Gemini key length: {len(gemini_key)}")
+        print(f"Gemini key starts with: {gemini_key[:10]}...")
+        gemini_key = gemini_key.strip("'\"")
+        print(f"Trying Gemini API...")
         try:
-            return call_gemini_api(goal, tasks, gemini_key)
+            result = call_gemini_api(goal, tasks, gemini_key)
+            print("Gemini API succeeded!")
+            return result
         except Exception as e:
             print(f"Gemini API failed: {e}")
+            import traceback
+            traceback.print_exc()
     
     # If no API keys or both fail, return fallback
     print("No API keys found or all APIs failed, using fallback")
+    print("=== END DEBUG INFO ===")
     return get_fallback_analysis(goal, tasks)
 
 def call_openai_api(goal, tasks, api_key):
@@ -88,8 +114,9 @@ def call_gemini_api(goal, tasks, api_key):
     """Call Gemini API for task analysis"""
     prompt = create_analysis_prompt(goal, tasks)
     
+    # Updated Gemini API endpoint and model name
     response = requests.post(
-        f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={api_key}",
+        f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}",
         headers={"Content-Type": "application/json"},
         json={
             "contents": [{"parts": [{"text": prompt}]}]
@@ -101,7 +128,8 @@ def call_gemini_api(goal, tasks, api_key):
         content = result['candidates'][0]['content']['parts'][0]['text']
         return parse_ai_response(content)
     else:
-        raise Exception(f"Gemini API error: {response.status_code}")
+        print(f"Gemini API Response: {response.text}")
+        raise Exception(f"Gemini API error: {response.status_code} - {response.text}")
 
 def create_analysis_prompt(goal, tasks):
     """Create the prompt for AI analysis"""
@@ -162,105 +190,35 @@ def parse_ai_response(content):
         raise Exception("Failed to parse AI response")
 
 def get_fallback_analysis(goal, tasks):
-    """Smart fallback analysis when AI APIs are unavailable"""
+    """Simple fallback when AI APIs are unavailable"""
     import hashlib
+    import random
     
     # Use hash of goal+tasks to ensure consistent results
     content_hash = hashlib.md5((goal + ''.join(tasks)).encode()).hexdigest()
+    random.seed(content_hash)  # Consistent random based on input
     
-    # Predefined analysis patterns based on common keywords
-    analysis_patterns = {
-        'job': {'impact_boost': 2, 'emoji': '💼', 'category': 'career'},
-        'apply': {'impact_boost': 3, 'emoji': '📝', 'category': 'action'},
-        'interview': {'impact_boost': 3, 'emoji': '🎯', 'category': 'critical'},
-        'resume': {'impact_boost': 1, 'emoji': '📄', 'category': 'preparation'},
-        'portfolio': {'impact_boost': 2, 'emoji': '💻', 'category': 'showcase'},
-        'network': {'impact_boost': 2, 'emoji': '🤝', 'category': 'relationship'},
-        'learn': {'impact_boost': 1, 'emoji': '📚', 'category': 'skill'},
-        'build': {'impact_boost': 2, 'emoji': '🔧', 'category': 'creation'},
-        'practice': {'impact_boost': 1, 'emoji': '⚡', 'category': 'improvement'},
-        'research': {'impact_boost': 0, 'emoji': '🔍', 'category': 'preparation'}
-    }
+    # Simple emoji selection
+    emojis = ["📋", "💼", "📚", "🔧", "💡", "�", "🚀c", "⚡", "🎨", "🔍", "📝", "💻", "🌟", "🏆", "🔥"]
     
     analyzed = []
     for i, task in enumerate(tasks):
-        task_lower = task.lower()
-        
-        # Calculate consistent impact based on keywords and hash
-        base_impact = 5
-        impact_boost = 0
-        emoji = '📋'
-        category = 'general'
-        
-        for keyword, pattern in analysis_patterns.items():
-            if keyword in task_lower:
-                impact_boost = max(impact_boost, pattern['impact_boost'])
-                emoji = pattern['emoji']
-                category = pattern['category']
-                break
-        
-        # Use hash for consistent but varied scoring
-        hash_val = int(content_hash[i % len(content_hash)], 16)
-        impact = min(10, max(1, base_impact + impact_boost + (hash_val % 3) - 1))
-        effort = min(10, max(1, 5 + (hash_val % 5) - 2))
-        
-        # Generate meaningful comparisons based on category
-        comparison = generate_smart_comparison(task, category, impact, tasks, i)
-        ranking = generate_smart_ranking(task, category, impact, len(tasks), i)
-        justification = generate_smart_justification(task, category, impact, goal)
+        # Generate consistent but varied scores
+        impact = random.randint(3, 9)
+        effort = random.randint(2, 8)
+        emoji = emojis[i % len(emojis)]
         
         analyzed.append({
             "task_name": task,
             "impact": impact,
             "effort": effort,
             "emoji": emoji,
-            "justification": justification,
-            "comparison": comparison,
-            "ranking_reason": ranking
+            "justification": "⚠️ AI analysis not available. Please add an API key to .env file for detailed insights.",
+            "comparison": "⚠️ Task comparison requires AI analysis. Add OPENAI_API_KEY or GEMINI_API_KEY to your .env file.",
+            "ranking_reason": "⚠️ Strategic ranking requires AI analysis. Configure an API key for detailed reasoning."
         })
     
     return analyzed
-
-def generate_smart_justification(task, category, impact, goal):
-    """Generate meaningful justification based on task category"""
-    if category == 'critical':
-        return f"HIGH IMPACT: This task is crucial for {goal} because it directly determines success in key interactions. Without this, other efforts may not yield results."
-    elif category == 'action':
-        return f"HIGH IMPACT: This task creates immediate opportunities toward {goal}. It's a direct action that moves you closer to your objective."
-    elif category == 'showcase':
-        return f"MEDIUM-HIGH IMPACT: This task demonstrates your capabilities for {goal}. It provides tangible evidence of your skills and experience."
-    elif category == 'relationship':
-        return f"MEDIUM IMPACT: This task builds connections that support {goal}. Relationships often open doors that applications alone cannot."
-    elif category == 'creation':
-        return f"MEDIUM IMPACT: This task builds something valuable for {goal}. It creates assets that can be leveraged multiple times."
-    elif category == 'preparation':
-        return f"MEDIUM IMPACT: This task sets the foundation for {goal}. While not directly achieving it, it enables other high-impact activities."
-    elif category == 'skill':
-        return f"MEDIUM IMPACT: This task improves your capabilities for {goal}. Knowledge and skills compound over time."
-    else:
-        return f"MODERATE IMPACT: This task contributes to {goal} through indirect means. It's part of a comprehensive strategy."
-
-def generate_smart_comparison(task, category, impact, all_tasks, index):
-    """Generate meaningful task comparisons"""
-    if category == 'critical':
-        return "This task is more important than preparation tasks because it directly determines outcomes. However, ensure you're prepared before attempting it."
-    elif category == 'action':
-        return "This task is more valuable than learning tasks because it creates immediate opportunities. Prioritize this over theoretical preparation."
-    elif category == 'showcase':
-        return "This task is more impactful than basic preparation because it demonstrates real capabilities. Do this before applying to opportunities."
-    elif category == 'preparation':
-        return "This task should be completed before action-oriented tasks. It's less urgent than direct applications but necessary for success."
-    else:
-        return f"This task complements other activities in your plan. Consider its timing relative to more direct actions."
-
-def generate_smart_ranking(task, category, impact, total_tasks, index):
-    """Generate meaningful ranking explanations"""
-    if impact >= 8:
-        return f"Ranks in top 25% because it directly advances your goal with high certainty of impact."
-    elif impact >= 6:
-        return f"Ranks in middle tier because it provides solid value but may require other tasks to be completed first."
-    else:
-        return f"Ranks lower because while useful, it's more supportive than directly goal-achieving."
 
 if __name__ == "__main__":
     app.run(debug=True)
