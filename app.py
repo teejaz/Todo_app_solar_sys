@@ -30,7 +30,11 @@ def analyze():
     
     except Exception as e:
         print(f"Error in analyze endpoint: {e}")
-        return jsonify({"error": str(e)}), 500
+        print(f"Goal: {data.get('goal', 'None')}")
+        print(f"Tasks: {data.get('tasks', 'None')}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Analysis failed: {str(e)}"}), 500
 
 def get_ai_analysis(goal, tasks):
     """

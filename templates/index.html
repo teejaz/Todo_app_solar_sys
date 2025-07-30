@@ -105,7 +105,7 @@
     >
       <h2 class="text-xl font-bold text-amber-300 mb-4">Task Details</h2>
       <div id="task-info-content" class="text-gray-400 text-center">
-        Click on any planet to see detailed information about the task.
+        Click on any task dot to see detailed information and AI analysis.
       </div>
     </div>
 
@@ -164,8 +164,9 @@
           }
         } catch (error) {
           console.error("Error during AI analysis:", error);
+          console.error("Error details:", error.message);
           showModal(
-            "An error occurred while communicating with the AI. Please check the console for details."
+            `AI Analysis Error: ${error.message}. Please check the browser console and terminal for more details.`
           );
           placeholderText.style.display = "block";
           placeholderText.textContent =
@@ -302,14 +303,36 @@
         yLabel.innerHTML = "← Impact";
         chartContainer.appendChild(yLabel);
 
-        // Plot tasks
+        // Plot tasks with simple overlap handling
         const chartWidth = width - 2 * margin;
         const chartHeight = height - 2 * margin;
+        const usedPositions = new Set(); // Track used grid positions
 
         analyzedTasks.forEach((task, index) => {
+          let displayImpact = task.impact;
+          let wasAdjusted = false;
+          
+          // Create a position key based on impact and effort
+          let positionKey = `${task.effort}-${displayImpact}`;
+          
+          // If position is taken, move this task down by 1 impact level
+          while (usedPositions.has(positionKey) && displayImpact > 1) {
+            displayImpact--;
+            wasAdjusted = true;
+            positionKey = `${task.effort}-${displayImpact}`;
+          }
+          
+          // Mark this position as used
+          usedPositions.add(positionKey);
+          
+          // Store adjustment info on the task object for panel display
+          task.displayImpact = displayImpact;
+          task.wasAdjusted = wasAdjusted;
+          task.adjustmentAmount = wasAdjusted ? (task.impact - displayImpact) : 0;
+
           const x = margin + (task.effort / 10) * chartWidth;
-          const y = margin + (1 - task.impact / 10) * chartHeight; // Invert Y so high impact is at top
-          const size = 40 + task.impact * 2; // Size based on impact
+          const y = margin + (1 - displayImpact / 10) * chartHeight; // Use adjusted impact for positioning
+          const size = 40 + task.impact * 2; // Size still based on original impact
 
           const taskDot = document.createElement("div");
           taskDot.style.position = "absolute";
@@ -319,7 +342,7 @@
           taskDot.style.height = `${size}px`;
           taskDot.style.borderRadius = "50%";
           taskDot.style.backgroundColor =
-            planetColors[index % planetColors.length];
+            taskColors[index % taskColors.length];
           taskDot.style.display = "flex";
           taskDot.style.alignItems = "center";
           taskDot.style.justifyContent = "center";
@@ -410,15 +433,34 @@
               </div>
             </div>
 
-            <!-- Orbit Information -->
-            <div class="p-3 bg-gray-700 rounded-lg">
-              <h4 class="font-semibold text-amber-300 mb-2">Orbit Position</h4>
-              <p class="text-gray-300 text-sm">
-                This task is in <strong>Orbit ${task.impact}</strong> - 
-                ${task.impact >= 8 ? 'Very close to your goal (high priority)' : 
-                  task.impact >= 6 ? 'Moderately close to your goal (medium priority)' : 
-                  'Further from your goal (lower priority)'}
+            <!-- Position Adjustment Notice -->
+            ${task.wasAdjusted ? `
+            <div class="mb-4 p-3 bg-yellow-900 bg-opacity-50 rounded-lg border border-yellow-600">
+              <h4 class="font-semibold text-yellow-300 mb-2 flex items-center">
+                <span class="mr-2">📍</span>
+                Position Adjusted
+              </h4>
+              <p class="text-gray-300 text-sm leading-relaxed">
+                This task was moved down by <strong>-${task.adjustmentAmount}</strong> impact level(s) on the chart to avoid overlapping with another task. 
+                Original impact: ${task.impact}/10, Display position: ${task.displayImpact}/10
               </p>
+            </div>
+            ` : ''}
+
+            <!-- Impact Analysis -->
+            <div class="p-3 bg-gray-700 rounded-lg">
+              <h4 class="font-semibold text-amber-300 mb-2">Impact Analysis</h4>
+              <p class="text-gray-300 text-sm">
+                This task has an <strong>Impact Score of ${task.impact}/10</strong> - 
+                ${task.impact >= 8 ? 'Very high impact on your goal (critical priority)' : 
+                  task.impact >= 6 ? 'Moderate impact on your goal (medium priority)' : 
+                  'Lower impact on your goal (supporting priority)'}
+              </p>
+              ${task.wasAdjusted ? `
+              <p class="text-yellow-300 text-xs mt-2">
+                ⚠️ Chart position adjusted to ${task.displayImpact}/10 to prevent overlap
+              </p>
+              ` : ''}
             </div>
           </div>
         `;
