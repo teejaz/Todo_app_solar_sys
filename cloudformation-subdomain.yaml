@@ -1,0 +1,66 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'AI Goal Visualizer Subdomain Setup'
+
+Parameters:
+  DomainName:
+    Type: String
+    Default: teejaz.com
+    Description: Your main domain
+  SubdomainName:
+    Type: String
+    Default: goals
+    Description: Subdomain for the app
+  
+Resources:
+  # Lambda function for your Flask app
+  GoalVisualizerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: ai-goal-visualizer
+      Runtime: python3.9
+      Handler: lambda_function.lambda_handler
+      Code:
+        ZipFile: |
+          # Your Flask app code here
+      Environment:
+        Variables:
+          OPENAI_API_KEY: !Ref OpenAIApiKey
+          GEMINI_API_KEY: !Ref GeminiApiKey
+
+  # API Gateway
+  ApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: ai-goal-visualizer-api
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  # CloudFront Distribution
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Aliases:
+          - !Sub "${SubdomainName}.${DomainName}"
+        Origins:
+          - Id: ApiGatewayOrigin
+            DomainName: !Sub "${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com"
+            CustomOriginConfig:
+              HTTPPort: 443
+              OriginProtocolPolicy: https-only
+        DefaultCacheBehavior:
+          TargetOriginId: ApiGatewayOrigin
+          ViewerProtocolPolicy: redirect-to-https
+        Enabled: true
+
+  # Route 53 Record
+  SubdomainRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref ExistingHostedZoneId
+      Name: !Sub "${SubdomainName}.${DomainName}"
+      Type: CNAME
+      TTL: 300
+      ResourceRecords:
+        - !GetAtt CloudFrontDistribution.DomainName

@@ -1,0 +1,21 @@
+version: 1
+backend:
+  phases:
+    build:
+      commands:
+        - pip install -r requirements.txt
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - echo "No frontend build needed"
+    build:
+      commands:
+        - echo "Starting Flask app"
+  artifacts:
+    baseDirectory: /
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
