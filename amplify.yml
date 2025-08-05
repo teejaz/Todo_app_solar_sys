@@ -1,23 +1,13 @@
 version: 1
-backend:
-  phases:
-    build:
-      commands:
-        - pip install --upgrade pip
-        - pip install -r requirements.txt
 frontend:
   phases:
     preBuild:
       commands:
-        - echo "Preparing Flask app"
+        - pip install -r requirements.txt
     build:
       commands:
-        - echo "Flask app built"
+        - echo "Build completed"
   artifacts:
-    baseDirectory: /
+    baseDirectory: .
     files:
       - '**/*'
-applications:
-  - appRoot: /
-    buildCommand: python app.py
-    startCommand: python app.py
