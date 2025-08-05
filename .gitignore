@@ -3,3 +3,7 @@ __pycache__/
 *.log
 venv/
 .env
+.env.production
+node_modules/
+.serverless/
+package-lock.json

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Goal Visualizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white flex flex-col md:flex-row h-screen">
+    <!-- Your existing HTML content -->
+    <!-- But modify the JavaScript to call Lambda API -->
+    
+    <script>
+        // Replace the Flask backend call with Lambda API
+        async function getAIAnalysis(goal, tasks) {
+            try {
+                const response = await fetch('https://your-lambda-api-url/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        goal: goal,
+                        tasks: tasks
+                    })
+                });
+                
+                const result = await response.json();
+                return result.analyzed_tasks || getMockData(tasks);
+            } catch (error) {
+                console.error("Error calling Lambda backend:", error);
+                return getMockData(tasks);
+            }
+        }
+        
+        // Rest of your existing JavaScript...
+    </script>
+</body>
+</html>

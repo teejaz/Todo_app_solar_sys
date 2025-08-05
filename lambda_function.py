@@ -1,6 +1,5 @@
-import json
+import serverless_wsgi
 from app import app
-import awsgi
 
 def lambda_handler(event, context):
-    return awsgi.response(app, event, context)
+    return serverless_wsgi.handle_request(app, event, context)

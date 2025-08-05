@@ -15,7 +15,6 @@
         font-family: "Inter", sans-serif;
         overflow: hidden; /* Prevents scrollbars from appearing during animations */
       }
-
     </style>
   </head>
   <body class="bg-gray-900 text-white flex flex-col md:flex-row h-screen">
@@ -27,7 +26,8 @@
       <div class="flex-grow">
         <h1 class="text-2xl font-bold text-amber-300 mb-4">Goal Visualizer</h1>
         <p class="text-gray-400 mb-6">
-          Define your goal and list the tasks. The AI will analyze them based on impact, effort, and provide strategic insights.
+          Define your goal and list the tasks. The AI will analyze them based on
+          impact, effort, and provide strategic insights.
         </p>
 
         <!-- GOAL INPUT -->
@@ -57,8 +57,6 @@
             placeholder="e.g., Apply to 15 jobs on LinkedIn&#10;Build a full-stack web app&#10;Attend a tech meetup"
           ></textarea>
         </div>
-
-
       </div>
 
       <!-- ACTION BUTTON -->
@@ -311,24 +309,24 @@
         analyzedTasks.forEach((task, index) => {
           let displayImpact = task.impact;
           let wasAdjusted = false;
-          
+
           // Create a position key based on impact and effort
           let positionKey = `${task.effort}-${displayImpact}`;
-          
+
           // If position is taken, move this task down by 1 impact level
           while (usedPositions.has(positionKey) && displayImpact > 1) {
             displayImpact--;
             wasAdjusted = true;
             positionKey = `${task.effort}-${displayImpact}`;
           }
-          
+
           // Mark this position as used
           usedPositions.add(positionKey);
-          
+
           // Store adjustment info on the task object for panel display
           task.displayImpact = displayImpact;
           task.wasAdjusted = wasAdjusted;
-          task.adjustmentAmount = wasAdjusted ? (task.impact - displayImpact) : 0;
+          task.adjustmentAmount = wasAdjusted ? task.impact - displayImpact : 0;
 
           const x = margin + (task.effort / 10) * chartWidth;
           const y = margin + (1 - displayImpact / 10) * chartHeight; // Use adjusted impact for positioning
@@ -341,8 +339,7 @@
           taskDot.style.width = `${size}px`;
           taskDot.style.height = `${size}px`;
           taskDot.style.borderRadius = "50%";
-          taskDot.style.backgroundColor =
-            taskColors[index % taskColors.length];
+          taskDot.style.backgroundColor = taskColors[index % taskColors.length];
           taskDot.style.display = "flex";
           taskDot.style.alignItems = "center";
           taskDot.style.justifyContent = "center";
@@ -376,10 +373,16 @@
             <div class="flex items-center mb-4 p-4 bg-gray-700 rounded-lg">
               <div class="text-3xl mr-3">${task.emoji || "❓"}</div>
               <div>
-                <h3 class="text-lg font-bold text-amber-300">${task.task_name}</h3>
+                <h3 class="text-lg font-bold text-amber-300">${
+                  task.task_name
+                }</h3>
                 <div class="flex space-x-4 mt-2">
-                  <span class="text-sm px-2 py-1 bg-green-600 rounded">Impact: ${task.impact}/10</span>
-                  <span class="text-sm px-2 py-1 bg-blue-600 rounded">Effort: ${task.effort}/10</span>
+                  <span class="text-sm px-2 py-1 bg-green-600 rounded">Impact: ${
+                    task.impact
+                  }/10</span>
+                  <span class="text-sm px-2 py-1 bg-blue-600 rounded">Effort: ${
+                    task.effort
+                  }/10</span>
                 </div>
               </div>
             </div>
@@ -396,11 +399,15 @@
             <!-- AI Analysis -->
             <div class="mb-4 p-3 bg-gray-700 rounded-lg">
               <h4 class="font-semibold text-amber-300 mb-2">Why This Task Matters</h4>
-              <p class="text-gray-300 text-sm leading-relaxed">${task.justification}</p>
+              <p class="text-gray-300 text-sm leading-relaxed">${
+                task.justification
+              }</p>
             </div>
 
             <!-- Task Comparison -->
-            ${task.comparison ? `
+            ${
+              task.comparison
+                ? `
             <div class="mb-4 p-3 bg-purple-900 bg-opacity-50 rounded-lg border border-purple-600">
               <h4 class="font-semibold text-purple-300 mb-2 flex items-center">
                 <span class="mr-2">⚖️</span>
@@ -408,10 +415,14 @@
               </h4>
               <p class="text-gray-300 text-sm leading-relaxed">${task.comparison}</p>
             </div>
-            ` : ''}
+            `
+                : ""
+            }
 
             <!-- Ranking Explanation -->
-            ${task.ranking_reason ? `
+            ${
+              task.ranking_reason
+                ? `
             <div class="mb-4 p-3 bg-orange-900 bg-opacity-50 rounded-lg border border-orange-600">
               <h4 class="font-semibold text-orange-300 mb-2 flex items-center">
                 <span class="mr-2">🏆</span>
@@ -419,22 +430,30 @@
               </h4>
               <p class="text-gray-300 text-sm leading-relaxed">${task.ranking_reason}</p>
             </div>
-            ` : ''}
+            `
+                : ""
+            }
 
             <!-- Quick Stats -->
             <div class="grid grid-cols-2 gap-3 mb-4">
               <div class="p-3 bg-gray-700 rounded-lg text-center">
-                <div class="text-xl font-bold text-green-400">${task.impact}</div>
+                <div class="text-xl font-bold text-green-400">${
+                  task.impact
+                }</div>
                 <div class="text-xs text-gray-400">Impact Score</div>
               </div>
               <div class="p-3 bg-gray-700 rounded-lg text-center">
-                <div class="text-xl font-bold text-blue-400">${task.effort}</div>
+                <div class="text-xl font-bold text-blue-400">${
+                  task.effort
+                }</div>
                 <div class="text-xs text-gray-400">Effort Score</div>
               </div>
             </div>
 
             <!-- Position Adjustment Notice -->
-            ${task.wasAdjusted ? `
+            ${
+              task.wasAdjusted
+                ? `
             <div class="mb-4 p-3 bg-yellow-900 bg-opacity-50 rounded-lg border border-yellow-600">
               <h4 class="font-semibold text-yellow-300 mb-2 flex items-center">
                 <span class="mr-2">📍</span>
@@ -445,22 +464,34 @@
                 Original impact: ${task.impact}/10, Display position: ${task.displayImpact}/10
               </p>
             </div>
-            ` : ''}
+            `
+                : ""
+            }
 
             <!-- Impact Analysis -->
             <div class="p-3 bg-gray-700 rounded-lg">
               <h4 class="font-semibold text-amber-300 mb-2">Impact Analysis</h4>
               <p class="text-gray-300 text-sm">
-                This task has an <strong>Impact Score of ${task.impact}/10</strong> - 
-                ${task.impact >= 8 ? 'Very high impact on your goal (critical priority)' : 
-                  task.impact >= 6 ? 'Moderate impact on your goal (medium priority)' : 
-                  'Lower impact on your goal (supporting priority)'}
+                This task has an <strong>Impact Score of ${
+                  task.impact
+                }/10</strong> - 
+                ${
+                  task.impact >= 8
+                    ? "Very high impact on your goal (critical priority)"
+                    : task.impact >= 6
+                    ? "Moderate impact on your goal (medium priority)"
+                    : "Lower impact on your goal (supporting priority)"
+                }
               </p>
-              ${task.wasAdjusted ? `
+              ${
+                task.wasAdjusted
+                  ? `
               <p class="text-yellow-300 text-xs mt-2">
                 ⚠️ Chart position adjusted to ${task.displayImpact}/10 to prevent overlap
               </p>
-              ` : ''}
+              `
+                  : ""
+              }
             </div>
           </div>
         `;

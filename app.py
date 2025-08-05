@@ -9,6 +9,7 @@ load_dotenv()
 
 app = Flask(__name__)
 
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -219,6 +220,21 @@ def get_fallback_analysis(goal, tasks):
         })
     
     return analyzed
+
+@app.route("/test")
+def test():
+    return {"status": "ok", "message": "Flask app is working!"}
+
+@app.route("/health")
+def health():
+    import os
+    return {
+        "status": "healthy",
+        "cwd": os.getcwd(),
+        "files": os.listdir("."),
+        "templates_exist": os.path.exists("templates"),
+        "index_exists": os.path.exists("templates/index.html")
+    }
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8080, debug=False)

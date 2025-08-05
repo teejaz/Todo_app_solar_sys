@@ -1,0 +1,32 @@
+service: ai-goal-visualizer
+stack: ai-goal-visualizer-stack
+
+provider:
+  name: aws
+  runtime: python3.9
+  region: us-east-1
+  timeout: 30
+  memorySize: 512
+  environment:
+    OPENAI_API_KEY: ${ssm:/ai-goal-visualizer/openai-key}
+    GEMINI_API_KEY: ${ssm:/ai-goal-visualizer/gemini-key}
+
+functions:
+  app:
+    handler: app.lambda_handler
+    events:
+      - httpApi:
+          path: /
+          method: ANY
+      - httpApi:
+          path: /{proxy+}
+          method: ANY
+
+plugins:
+  - serverless-python-requirements
+
+custom:
+  pythonRequirements:
+    dockerizePip: false
+    slim: true
+    strip: false
