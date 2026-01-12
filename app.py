@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timedelta
 import calendar
+from sqlalchemy import func
 
 # Load environment variables from .env file
 load_dotenv()
