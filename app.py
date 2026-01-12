@@ -3,15 +3,44 @@ import requests
 import json
 import os
 from dotenv import load_dotenv
+from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime, timedelta
+import calendar
 
 # Load environment variables from .env file
 load_dotenv()
 
 app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///tasks.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+
+# Database Models
+class TaskCompletion(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    task_name = db.Column(db.String(200), nullable=False)
+    goal = db.Column(db.String(200), nullable=False)
+    completed_at = db.Column(db.DateTime, default=datetime.utcnow)
+    impact_score = db.Column(db.Integer)
+    effort_score = db.Column(db.Integer)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'task_name': self.task_name,
+            'goal': self.goal,
+            'completed_at': self.completed_at.isoformat(),
+            'impact_score': self.impact_score,
+            'effort_score': self.effort_score
+        }
 
 @app.route("/")
 def index():
     return render_template("index.html")
+
+@app.route("/dashboard")
+def dashboard():
+    return render_template("dashboard.html")
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
@@ -220,5 +249,139 @@ def get_fallback_analysis(goal, tasks):
     
     return analyzed
 
+@app.route("/complete-task", methods=["POST"])
+def complete_task():
+    try:
+        data = request.get_json()
+        task_name = data.get('task_name')
+        goal = data.get('goal')
+        impact_score = data.get('impact_score')
+        effort_score = data.get('effort_score')
+        
+        if not task_name or not goal:
+            return jsonify({"error": "Task name and goal are required"}), 400
+        
+        completion = TaskCompletion(
+            task_name=task_name,
+            goal=goal,
+            impact_score=impact_score,
+            effort_score=effort_score
+        )
+        
+        db.session.add(completion)
+        db.session.commit()
+        
+        return jsonify({"message": "Task completed successfully", "task": completion.to_dict()})
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": f"Failed to complete task: {str(e)}"}), 500
+
+@app.route("/task-stats")
+def task_stats():
+    try:
+        # Get last 365 days of data
+        end_date = datetime.utcnow()
+        start_date = end_date - timedelta(days=365)
+        
+        completions = TaskCompletion.query.filter(
+            TaskCompletion.completed_at >= start_date
+        ).all()
+        
+        # Group by date for contribution graph
+        daily_data = {}
+        for completion in completions:
+            date_key = completion.completed_at.date().isoformat()
+            if date_key not in daily_data:
+                daily_data[date_key] = {
+                    'date': date_key,
+                    'count': 0,
+                    'tasks': []
+                }
+            daily_data[date_key]['count'] += 1
+            daily_data[date_key]['tasks'].append({
+                'task_name': completion.task_name,
+                'goal': completion.goal,
+                'impact_score': completion.impact_score
+            })
+        
+        # Calculate statistics
+        total_tasks = len(completions)
+        unique_days = len(daily_data)
+        current_streak = calculate_current_streak()
+        longest_streak = calculate_longest_streak()
+        
+        # Goal breakdown
+        goal_stats = {}
+        for completion in completions:
+            if completion.goal not in goal_stats:
+                goal_stats[completion.goal] = 0
+            goal_stats[completion.goal] += 1
+        
+        return jsonify({
+            'daily_data': list(daily_data.values()),
+            'total_tasks': total_tasks,
+            'unique_days': unique_days,
+            'current_streak': current_streak,
+            'longest_streak': longest_streak,
+            'goal_stats': goal_stats
+        })
+    
+    except Exception as e:
+        return jsonify({"error": f"Failed to get stats: {str(e)}"}), 500
+
+def calculate_current_streak():
+    """Calculate current streak of consecutive days with tasks"""
+    today = datetime.utcnow().date()
+    streak = 0
+    
+    for i in range(365):  # Check up to a year back
+        check_date = today - timedelta(days=i)
+        count = TaskCompletion.query.filter(
+            db.func.date(TaskCompletion.completed_at) == check_date
+        ).count()
+        
+        if count > 0:
+            streak += 1
+        else:
+            break  # Streak broken
+    
+    return streak
+
+def calculate_longest_streak():
+    """Calculate longest streak in the last year"""
+    end_date = datetime.utcnow().date()
+    start_date = end_date - timedelta(days=365)
+    
+    # Get all dates with tasks
+    dates_with_tasks = db.session.query(
+        db.func.date(TaskCompletion.completed_at).label('date')
+    ).filter(
+        TaskCompletion.completed_at >= start_date
+    ).distinct().all()
+    
+    date_set = {d.date for d in dates_with_tasks}
+    longest = 0
+    current = 0
+    
+    # Check each day in the range
+    current_date = start_date
+    while current_date <= end_date:
+        if current_date in date_set:
+            current += 1
+            longest = max(longest, current)
+        else:
+            current = 0
+        current_date += timedelta(days=1)
+    
+    return longest
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    with app.app_context():
+        db.create_all()
+    app.run(debug=True, port=5001, host='0.0.0.0')
+
+# Production deployment
+if __name__ != "__main__":
+    with app.app_context():
+        db.create_all()
