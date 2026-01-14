@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Goal Visualizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+        overflow: hidden; /* Prevents scrollbars from appearing during animations */
+      }
+
+      .contribution-box {
+        transition: all 0.15s ease;
+        cursor: pointer;
+      }
+      .contribution-box:hover {
+        filter: brightness(1.2);
+        stroke: #374151;
+        stroke-width: 1;
+      }
+      .level-0 { fill: #161b22; }
+      .level-1 { fill: #0e4429; }
+      .level-2 { fill: #006d32; }
+      .level-3 { fill: #26a641; }
+      .level-4 { fill: #39d353; }
+    </style>
+  </head>
+  <body class="bg-gray-900 text-white flex flex-col md:flex-row h-screen">
+    <!-- CONTROLS PANEL -->
+    <div
+      id="controls-panel"
+      class="w-full md:w-1/3 lg:w-1/4 p-6 bg-gray-800 shadow-2xl overflow-y-auto flex flex-col h-full"
+    >
+      <div class="flex-grow">
+        <div class="flex items-center justify-between mb-4">
+          <h1 class="text-2xl font-bold text-amber-300">Task Tracker</h1>
+        </div>
+        
+        <!-- View Toggle -->
+        <div class="mb-6">
+          <div class="flex bg-gray-700 rounded-lg p-1">
+            <button id="analysisViewBtn" onclick="switchView('analysis')" 
+                    class="flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors bg-amber-500 text-gray-900">
+              🎯 Task Analysis
+            </button>
+            <button id="dashboardViewBtn" onclick="switchView('dashboard')" 
+                    class="flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors text-gray-300 hover:text-white">
+              📊 Dashboard
+            </button>
+          </div>
+        </div>
+        <!-- Task Analysis Section -->
+        <div id="analysisSection" class="space-y-6">
+          <p class="text-gray-400 mb-6">
+            Define your goal and list the tasks. The AI will analyze them based on impact, effort, and provide strategic insights.
+          </p>
+
+        <!-- GOAL INPUT -->
+        <div>
+          <label for="goal" class="block text-sm font-medium text-gray-300 mb-2"
+            >Your Main Goal</label
+          >
+          <input
+            type="text"
+            id="goal"
+            class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
+            placeholder="e.g., Get a job as a Software Engineer"
+          />
+        </div>
+
+        <!-- TASKS INPUT -->
+        <div class="mt-6">
+          <label
+            for="tasks"
+            class="block text-sm font-medium text-gray-300 mb-2"
+            >Your Tasks (one per line)</label
+          >
+          <textarea
+            id="tasks"
+            rows="8"
+            class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400"
+            placeholder="e.g., Apply to 15 jobs on LinkedIn&#10;Build a full-stack web app&#10;Attend a tech meetup"
+          ></textarea>
+        </div>
+
+
+      </div>
+
+      <!-- ACTION BUTTON -->
+      <div class="mt-6 flex-shrink-0">
+        <button
+          id="visualize-btn"
+          class="w-full bg-amber-500 hover:bg-amber-600 text-gray-900 font-bold py-3 px-4 rounded-lg transition duration-300 flex items-center justify-center"
+        >
+          <svg
+            id="button-icon"
+            class="w-5 h-5 mr-2"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M13 10V3L4 14h7v7l9-11h-7z"
+            ></path>
+          </svg>
+          <span id="button-text">Visualize</span>
+        </button>
+      </div>
+        </div> <!-- End of analysisSection -->
+        
+        <!-- Dashboard Section -->
+        <div id="dashboardSection" class="hidden">
+          <div class="text-center mb-6">
+            <p class="text-gray-400">Track your progress and view completion statistics</p>
+          </div>
+          
+          <!-- Quick Stats -->
+          <div class="grid grid-cols-2 gap-3 mb-6">
+            <div class="bg-gray-700 rounded-lg p-3 text-center">
+              <div class="text-xl font-bold text-green-400" id="quickCurrentStreak">0</div>
+              <div class="text-xs text-gray-400">Current Streak</div>
+            </div>
+            <div class="bg-gray-700 rounded-lg p-3 text-center">
+              <div class="text-xl font-bold text-blue-400" id="quickTotalTasks">0</div>
+              <div class="text-xs text-gray-400">Total Tasks</div>
+            </div>
+          </div>
+          
+          <button onclick="refreshDashboard()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors mb-4">
+            🔄 Refresh Dashboard
+          </button>
+        </div>
+      </div>
+
+    <!-- VISUALIZATION AREA -->
+    <div
+      id="visualization-area"
+      class="flex-grow relative bg-gray-900 h-full overflow-y-auto"
+    >
+      <!-- Analysis View -->
+      <div id="analysisView" class="h-full flex items-center justify-center">
+        <!-- Placeholder text -->
+        <div id="placeholder-text" class="text-gray-600 text-2xl">
+          Your Goal System will appear here...
+        </div>
+      </div>
+      
+      <!-- Dashboard View -->
+      <div id="dashboardView" class="hidden h-full">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <!-- Stats Overview -->
+          <section class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-3xl font-bold text-amber-400" id="uniqueDays">0</div>
+                  <div class="text-sm text-gray-400 mt-1">Active Days</div>
+                </div>
+                <div class="text-amber-400 text-2xl">📅</div>
+              </div>
+            </div>
+            
+            <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-3xl font-bold text-green-400" id="longestStreak">0</div>
+                  <div class="text-sm text-gray-400 mt-1">Longest Streak</div>
+                </div>
+                <div class="text-green-400 text-2xl">🔥</div>
+              </div>
+            </div>
+            
+            <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-3xl font-bold text-blue-400" id="avgPerDay">0</div>
+                  <div class="text-sm text-gray-400 mt-1">Avg Tasks/Day</div>
+                </div>
+                <div class="text-blue-400 text-2xl">📊</div>
+              </div>
+            </div>
+            
+            <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="text-3xl font-bold text-purple-400" id="goalCount">0</div>
+                  <div class="text-sm text-gray-400 mt-1">Goals Tracked</div>
+                </div>
+                <div class="text-purple-400 text-2xl">🎯</div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Contribution Graph -->
+          <section class="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
+            <h2 class="text-xl font-semibold text-white mb-4">Task Completion Activity</h2>
+            <div class="mb-4">
+              <div class="flex items-center space-x-4 text-sm text-gray-400">
+                <span>Less</span>
+                <div class="flex space-x-1">
+                  <div class="w-3 h-3 level-0 rounded-sm"></div>
+                  <div class="w-3 h-3 level-1 rounded-sm"></div>
+                  <div class="w-3 h-3 level-2 rounded-sm"></div>
+                  <div class="w-3 h-3 level-3 rounded-sm"></div>
+                  <div class="w-3 h-3 level-4 rounded-sm"></div>
+                </div>
+                <span>More</span>
+              </div>
+            </div>
+            <div id="contributionGraph" class="overflow-x-auto">
+              <!-- SVG will be generated here -->
+            </div>
+          </section>
+
+          <!-- Goal Breakdown -->
+          <section class="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
+            <h2 class="text-xl font-semibold text-white mb-4">Goal Progress</h2>
+            <div id="goalBreakdown" class="space-y-3">
+              <!-- Goal stats will be populated here -->
+            </div>
+          </section>
+
+          <!-- Recent Activity -->
+          <section class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <h2 class="text-xl font-semibold text-white mb-4">Recent Activity</h2>
+            <div id="recentActivity" class="space-y-2">
+              <!-- Recent tasks will be populated here -->
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <!-- TASK INFO PANEL -->
+    <div
+      id="info-panel"
+      class="w-full md:w-1/3 lg:w-1/4 p-6 bg-gray-800 shadow-2xl overflow-y-auto flex flex-col h-full border-l border-gray-700"
+    >
+      <h2 class="text-xl font-bold text-amber-300 mb-4">Task Details</h2>
+      <div id="task-info-content" class="text-gray-400 text-center">
+        Click on any task dot to see detailed information and AI analysis.
+      </div>
+    </div>
+
+    <script>
+      const visualizeBtn = document.getElementById("visualize-btn");
+      const buttonText = document.getElementById("button-text");
+      const buttonIcon = document.getElementById("button-icon");
+      const goalInput = document.getElementById("goal");
+      const tasksInput = document.getElementById("tasks");
+      const visualizationArea = document.getElementById("visualization-area");
+      const placeholderText = document.getElementById("placeholder-text");
+      const taskInfoContent = document.getElementById("task-info-content");
+
+      // Current data state
+      let currentData = null;
+      let taskData = {};
+      let currentView = 'analysis';
+
+      // View switching functions
+      function switchView(view) {
+        currentView = view;
+        
+        // Update button styles
+        const analysisBtn = document.getElementById('analysisViewBtn');
+        const dashboardBtn = document.getElementById('dashboardViewBtn');
+        const analysisSection = document.getElementById('analysisSection');
+        const dashboardSection = document.getElementById('dashboardSection');
+        const analysisView = document.getElementById('analysisView');
+        const dashboardView = document.getElementById('dashboardView');
+        
+        if (view === 'analysis') {
+          // Show analysis view
+          analysisBtn.className = 'flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors bg-amber-500 text-gray-900';
+          dashboardBtn.className = 'flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors text-gray-300 hover:text-white';
+          analysisSection.classList.remove('hidden');
+          dashboardSection.classList.add('hidden');
+          analysisView.classList.remove('hidden');
+          dashboardView.classList.add('hidden');
+        } else {
+          // Show dashboard view
+          analysisBtn.className = 'flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors text-gray-300 hover:text-white';
+          dashboardBtn.className = 'flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors bg-amber-500 text-gray-900';
+          analysisSection.classList.add('hidden');
+          dashboardSection.classList.remove('hidden');
+          analysisView.classList.add('hidden');
+          dashboardView.classList.remove('hidden');
+          
+          // Load dashboard data when switching to dashboard view
+          loadDashboard();
+        }
+      }
+
+      // Dashboard functions
+      async function loadDashboard() {
+        try {
+          const response = await fetch('/task-stats');
+          taskData = await response.json();
+          updateStats();
+          createContributionGraph();
+          updateGoalBreakdown();
+          updateRecentActivity();
+        } catch (error) {
+          console.error('Failed to load dashboard data:', error);
+        }
+      }
+
+      function refreshDashboard() {
+        loadDashboard();
+      }
+
+      function updateStats() {
+        document.getElementById('quickCurrentStreak').textContent = taskData.current_streak || 0;
+        document.getElementById('quickTotalTasks').textContent = taskData.total_tasks || 0;
+        document.getElementById('currentStreak').textContent = taskData.current_streak || 0;
+        document.getElementById('totalTasks').textContent = taskData.total_tasks || 0;
+        document.getElementById('uniqueDays').textContent = taskData.unique_days || 0;
+        document.getElementById('longestStreak').textContent = taskData.longest_streak || 0;
+        
+        const avgPerDay = taskData.unique_days > 0 ? 
+          (taskData.total_tasks / taskData.unique_days).toFixed(1) : 0;
+        document.getElementById('avgPerDay').textContent = avgPerDay;
+        
+        document.getElementById('goalCount').textContent = Object.keys(taskData.goal_stats || {}).length;
+      }
+
+      function createContributionGraph() {
+        const graphContainer = document.getElementById('contributionGraph');
+        graphContainer.innerHTML = ''; // Clear previous content
+        
+        const today = new Date();
+        const startDate = new Date(today);
+        startDate.setDate(startDate.getDate() - 364); // Last 365 days
+        
+        // Create date map
+        const dateMap = {};
+        taskData.daily_data.forEach(day => {
+          dateMap[day.date] = day.count;
+        });
+        
+        // Create SVG
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('width', '828');
+        svg.setAttribute('height', '128');
+        svg.setAttribute('viewBox', '0 0 828 128');
+        
+        // Create contribution boxes
+        let weekCount = 0;
+        let currentDate = new Date(startDate);
+        
+        while (currentDate <= today) {
+          const dayOfWeek = currentDate.getDay();
+          const weekOfYear = Math.floor((currentDate - startDate) / (7 * 24 * 60 * 60 * 1000));
+          
+          const x = weekOfYear * 15 + 10;
+          const y = dayOfWeek * 15 + 10;
+          
+          const dateKey = currentDate.toISOString().split('T')[0];
+          const count = dateMap[dateKey] || 0;
+          const level = Math.min(4, Math.ceil(count / 2));
+          
+          const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          rect.setAttribute('x', x);
+          rect.setAttribute('y', y);
+          rect.setAttribute('width', '11');
+          rect.setAttribute('height', '11');
+          rect.setAttribute('rx', '2');
+          rect.setAttribute('class', `contribution-box level-${level}`);
+          rect.setAttribute('data-date', dateKey);
+          rect.setAttribute('data-count', count);
+          
+          // Add tooltip events
+          rect.addEventListener('mouseenter', showTooltip);
+          rect.addEventListener('mouseleave', hideTooltip);
+          
+          svg.appendChild(rect);
+          
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+        
+        graphContainer.appendChild(svg);
+      }
+
+      function showTooltip(event) {
+        const tooltip = document.getElementById('tooltip');
+        const date = event.target.getAttribute('data-date');
+        const count = event.target.getAttribute('data-count');
+        
+        const formattedDate = new Date(date).toLocaleDateString('en-US', {
+          weekday: 'short',
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+        
+        tooltip.innerHTML = `
+          <div class="font-semibold">${formattedDate}</div>
+          <div>${count} task${count !== '1' ? 's' : ''} completed</div>
+        `;
+        
+        tooltip.style.opacity = '1';
+        
+        const rect = event.target.getBoundingClientRect();
+        tooltip.style.left = rect.left + rect.width / 2 - tooltip.offsetWidth / 2 + 'px';
+        tooltip.style.top = rect.top - tooltip.offsetHeight - 5 + 'px';
+      }
+
+      function hideTooltip() {
+        document.getElementById('tooltip').style.opacity = '0';
+      }
+
+      function updateGoalBreakdown() {
+        const container = document.getElementById('goalBreakdown');
+        container.innerHTML = '';
+        
+        const goalStats = taskData.goal_stats || {};
+        const totalTasks = taskData.total_tasks || 0;
+        
+        Object.entries(goalStats).forEach(([goal, count]) => {
+          const percentage = totalTasks > 0 ? (count / totalTasks * 100).toFixed(1) : 0;
+          
+          const goalDiv = document.createElement('div');
+          goalDiv.className = 'flex items-center justify-between';
+          goalDiv.innerHTML = `
+            <div class="flex-1">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-sm font-medium text-gray-200">${goal}</span>
+                <span class="text-sm text-gray-400">${count} tasks (${percentage}%)</span>
+              </div>
+              <div class="w-full bg-gray-700 rounded-full h-2">
+                <div class="bg-gradient-to-r from-amber-400 to-orange-500 h-2 rounded-full transition-all duration-500" 
+                     style="width: ${percentage}%"></div>
+              </div>
+            </div>
+          `;
+          container.appendChild(goalDiv);
+        });
+      }
+
+      function updateRecentActivity() {
+        const container = document.getElementById('recentActivity');
+        container.innerHTML = '';
+        
+        const recentData = taskData.daily_data || [];
+        const sortedData = recentData.sort((a, b) => new Date(b.date) - new Date(a.date));
+        const recent = sortedData.slice(0, 10);
+        
+        if (recent.length === 0) {
+          container.innerHTML = '<div class="text-gray-400 text-center py-4">No recent activity</div>';
+          return;
+        }
+        
+        recent.forEach(day => {
+          const date = new Date(day.date);
+          const formattedDate = date.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+          });
+          
+          const dayDiv = document.createElement('div');
+          dayDiv.className = 'flex items-center justify-between p-3 bg-gray-700 rounded-lg';
+          dayDiv.innerHTML = `
+            <div>
+              <div class="font-medium text-gray-200">${formattedDate}</div>
+              <div class="text-sm text-gray-400">${day.count} task${day.count !== 1 ? 's' : ''} completed</div>
+            </div>
+            <div class="text-right">
+              <div class="text-sm text-gray-400">
+                ${day.tasks.slice(0, 2).map(t => t.task_name).join(', ')}
+                ${day.tasks.length > 2 ? ` +${day.tasks.length - 2} more` : ''}
+              </div>
+            </div>
+          `;
+          container.appendChild(dayDiv);
+        });
+      }
+
+      // Predefined color palette for task dots
+      const taskColors = [
+        "#ef4444",
+        "#f97316",
+        "#eab308",
+        "#84cc16",
+        "#22c55e",
+        "#14b8a6",
+        "#06b6d4",
+        "#3b82f6",
+        "#8b5cf6",
+        "#d946ef",
+      ];
+
+      visualizeBtn.addEventListener("click", async () => {
+        const goal = goalInput.value.trim();
+        const tasks = tasksInput.value
+          .trim()
+          .split("\n")
+          .filter((t) => t.trim() !== "");
+
+        if (!goal || tasks.length === 0) {
+          // Using a custom modal instead of alert
+          showModal("Please provide a goal and at least one task.");
+          return;
+        }
+
+        setLoadingState(true);
+
+        try {
+          const analyzedTasks = await getAIAnalysis(goal, tasks);
+          if (analyzedTasks && analyzedTasks.length > 0) {
+            placeholderText.style.display = "none";
+            currentData = { goal, tasks: analyzedTasks };
+            createVisualization(goal, analyzedTasks);
+          } else {
+            showModal(
+              "The AI couldn't analyze the tasks. Please try again with a clearer goal and tasks."
+            );
+          }
+        } catch (error) {
+          console.error("Error during AI analysis:", error);
+          console.error("Error details:", error.message);
+          showModal(
+            `AI Analysis Error: ${error.message}. Please check the browser console and terminal for more details.`
+          );
+          placeholderText.style.display = "block";
+          placeholderText.textContent =
+            "Error. Could not generate visualization.";
+        } finally {
+          setLoadingState(false);
+        }
+      });
+
+      function setLoadingState(isLoading) {
+        visualizeBtn.disabled = isLoading;
+        if (isLoading) {
+          buttonText.textContent = "Analyzing...";
+          buttonIcon.innerHTML = `
+                    <svg class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>`;
+        } else {
+          buttonText.textContent = "Visualize";
+          buttonIcon.innerHTML = `<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>`;
+        }
+      }
+
+      async function getAIAnalysis(goal, tasks) {
+        try {
+          // Send data to Flask backend for AI analysis
+          const response = await fetch("/analyze", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              goal: goal,
+              tasks: tasks,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`Server error: ${response.status}`);
+          }
+
+          const result = await response.json();
+          return result.analyzed_tasks || getMockData(tasks);
+        } catch (error) {
+          console.error("Error calling Flask backend:", error);
+          return getMockData(tasks); // Fallback on error
+        }
+      }
+
+      function getMockData(tasks) {
+        // This provides fallback data if the API call fails, for demonstration purposes.
+        return tasks.map((task) => ({
+          task_name: task,
+          impact: Math.floor(Math.random() * 10) + 1,
+          effort: Math.floor(Math.random() * 10) + 1,
+          emoji: "❓",
+          justification:
+            "This is a fallback justification as the AI call failed.",
+        }));
+      }
+
+      // Main visualization function - Impact/Effort Chart
+      function createVisualization(goal, analyzedTasks) {
+        createScatterChart(goal, analyzedTasks);
+      }
+
+      function createScatterChart(goal, analyzedTasks) {
+        visualizationArea.innerHTML = ""; // Clear previous visualization
+
+        const width = visualizationArea.offsetWidth;
+        const height = visualizationArea.offsetHeight;
+        const margin = 80;
+
+        // Create chart container
+        const chartContainer = document.createElement("div");
+        chartContainer.style.position = "relative";
+        chartContainer.style.width = "100%";
+        chartContainer.style.height = "100%";
+        visualizationArea.appendChild(chartContainer);
+
+        // Add goal in top-right corner
+        const goalBox = document.createElement("div");
+        goalBox.style.position = "absolute";
+        goalBox.style.top = "20px";
+        goalBox.style.right = "20px";
+        goalBox.style.background = "rgba(255, 193, 7, 0.9)";
+        goalBox.style.color = "#1f2937";
+        goalBox.style.padding = "12px 16px";
+        goalBox.style.borderRadius = "8px";
+        goalBox.style.fontWeight = "bold";
+        goalBox.style.maxWidth = "250px";
+        goalBox.style.fontSize = "14px";
+        goalBox.innerHTML = `🎯 ${goal}`;
+        chartContainer.appendChild(goalBox);
+
+        // Create axes
+        const xAxis = document.createElement("div");
+        xAxis.style.position = "absolute";
+        xAxis.style.bottom = `${margin - 20}px`;
+        xAxis.style.left = `${margin}px`;
+        xAxis.style.right = `${margin}px`;
+        xAxis.style.height = "1px";
+        xAxis.style.background = "rgba(255, 255, 255, 0.3)";
+        chartContainer.appendChild(xAxis);
+
+        const yAxis = document.createElement("div");
+        yAxis.style.position = "absolute";
+        yAxis.style.left = `${margin - 20}px`;
+        yAxis.style.top = `${margin}px`;
+        yAxis.style.bottom = `${margin}px`;
+        yAxis.style.width = "1px";
+        yAxis.style.background = "rgba(255, 255, 255, 0.3)";
+        chartContainer.appendChild(yAxis);
+
+        // Add axis labels
+        const xLabel = document.createElement("div");
+        xLabel.style.position = "absolute";
+        xLabel.style.bottom = "20px";
+        xLabel.style.left = "50%";
+        xLabel.style.transform = "translateX(-50%)";
+        xLabel.style.color = "#9ca3af";
+        xLabel.style.fontSize = "14px";
+        xLabel.innerHTML = "Effort →";
+        chartContainer.appendChild(xLabel);
+
+        const yLabel = document.createElement("div");
+        yLabel.style.position = "absolute";
+        yLabel.style.left = "20px";
+        yLabel.style.top = "50%";
+        yLabel.style.transform = "translateY(-50%) rotate(-90deg)";
+        yLabel.style.color = "#9ca3af";
+        yLabel.style.fontSize = "14px";
+        yLabel.innerHTML = "← Impact";
+        chartContainer.appendChild(yLabel);
+
+        // Plot tasks with simple overlap handling
+        const chartWidth = width - 2 * margin;
+        const chartHeight = height - 2 * margin;
+        const usedPositions = new Set(); // Track used grid positions
+
+        analyzedTasks.forEach((task, index) => {
+          let displayImpact = task.impact;
+          let wasAdjusted = false;
+          
+          // Create a position key based on impact and effort
+          let positionKey = `${task.effort}-${displayImpact}`;
+          
+          // If position is taken, move this task down by 1 impact level
+          while (usedPositions.has(positionKey) && displayImpact > 1) {
+            displayImpact--;
+            wasAdjusted = true;
+            positionKey = `${task.effort}-${displayImpact}`;
+          }
+          
+          // Mark this position as used
+          usedPositions.add(positionKey);
+          
+          // Store adjustment info on the task object for panel display
+          task.displayImpact = displayImpact;
+          task.wasAdjusted = wasAdjusted;
+          task.adjustmentAmount = wasAdjusted ? (task.impact - displayImpact) : 0;
+
+          const x = margin + (task.effort / 10) * chartWidth;
+          const y = margin + (1 - displayImpact / 10) * chartHeight; // Use adjusted impact for positioning
+          const size = 40 + task.impact * 2; // Size still based on original impact
+
+          const taskDot = document.createElement("div");
+          taskDot.style.position = "absolute";
+          taskDot.style.left = `${x - size / 2}px`;
+          taskDot.style.top = `${y - size / 2}px`;
+          taskDot.style.width = `${size}px`;
+          taskDot.style.height = `${size}px`;
+          taskDot.style.borderRadius = "50%";
+          taskDot.style.backgroundColor =
+            taskColors[index % taskColors.length];
+          taskDot.style.display = "flex";
+          taskDot.style.alignItems = "center";
+          taskDot.style.justifyContent = "center";
+          taskDot.style.fontSize = `${16 + task.impact}px`;
+          taskDot.style.cursor = "pointer";
+          taskDot.style.transition = "transform 0.3s ease";
+          taskDot.innerHTML = `<span>${task.emoji || "❓"}</span>`;
+
+          taskDot.addEventListener("mouseenter", () => {
+            taskDot.style.transform = "scale(1.2)";
+          });
+
+          taskDot.addEventListener("mouseleave", () => {
+            taskDot.style.transform = "scale(1)";
+          });
+
+          // Click event to show task details in side panel
+          taskDot.addEventListener("click", () => {
+            showTaskDetails(task);
+          });
+
+          chartContainer.appendChild(taskDot);
+        });
+      }
+
+      // Function to show task details in the side panel
+      function showTaskDetails(task) {
+        taskInfoContent.innerHTML = `
+          <div class="text-left">
+            <!-- Task Header -->
+            <div class="flex items-center mb-4 p-4 bg-gray-700 rounded-lg">
+              <div class="text-3xl mr-3">${task.emoji || "❓"}</div>
+              <div>
+                <h3 class="text-lg font-bold text-amber-300">${task.task_name}</h3>
+                <div class="flex space-x-4 mt-2">
+                  <span class="text-sm px-2 py-1 bg-green-600 rounded">Impact: ${task.impact}/10</span>
+                  <span class="text-sm px-2 py-1 bg-blue-600 rounded">Effort: ${task.effort}/10</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Priority Level -->
+            <div class="mb-4 p-3 bg-gray-700 rounded-lg">
+              <h4 class="font-semibold text-amber-300 mb-2">Priority Level</h4>
+              <div class="flex items-center">
+                <div class="text-2xl mr-2">${getPriorityIcon(task.impact)}</div>
+                <span class="text-white">${getPriorityText(task.impact)}</span>
+              </div>
+            </div>
+
+            <!-- AI Analysis -->
+            <div class="mb-4 p-3 bg-gray-700 rounded-lg">
+              <h4 class="font-semibold text-amber-300 mb-2">Why This Task Matters</h4>
+              <p class="text-gray-300 text-sm leading-relaxed">${task.justification}</p>
+            </div>
+
+            <!-- Task Comparison -->
+            ${task.comparison ? `
+            <div class="mb-4 p-3 bg-purple-900 bg-opacity-50 rounded-lg border border-purple-600">
+              <h4 class="font-semibold text-purple-300 mb-2 flex items-center">
+                <span class="mr-2">⚖️</span>
+                How This Compares to Other Tasks
+              </h4>
+              <p class="text-gray-300 text-sm leading-relaxed">${task.comparison}</p>
+            </div>
+            ` : ''}
+
+            <!-- Ranking Explanation -->
+            ${task.ranking_reason ? `
+            <div class="mb-4 p-3 bg-orange-900 bg-opacity-50 rounded-lg border border-orange-600">
+              <h4 class="font-semibold text-orange-300 mb-2 flex items-center">
+                <span class="mr-2">🏆</span>
+                Strategic Ranking
+              </h4>
+              <p class="text-gray-300 text-sm leading-relaxed">${task.ranking_reason}</p>
+            </div>
+            ` : ''}
+
+            <!-- Quick Stats -->
+            <div class="grid grid-cols-2 gap-3 mb-4">
+              <div class="p-3 bg-gray-700 rounded-lg text-center">
+                <div class="text-xl font-bold text-green-400">${task.impact}</div>
+                <div class="text-xs text-gray-400">Impact Score</div>
+              </div>
+              <div class="p-3 bg-gray-700 rounded-lg text-center">
+                <div class="text-xl font-bold text-blue-400">${task.effort}</div>
+                <div class="text-xs text-gray-400">Effort Score</div>
+              </div>
+            </div>
+
+            <!-- Position Adjustment Notice -->
+            ${task.wasAdjusted ? `
+            <div class="mb-4 p-3 bg-yellow-900 bg-opacity-50 rounded-lg border border-yellow-600">
+              <h4 class="font-semibold text-yellow-300 mb-2 flex items-center">
+                <span class="mr-2">📍</span>
+                Position Adjusted
+              </h4>
+              <p class="text-gray-300 text-sm leading-relaxed">
+                This task was moved down by <strong>-${task.adjustmentAmount}</strong> impact level(s) on the chart to avoid overlapping with another task. 
+                Original impact: ${task.impact}/10, Display position: ${task.displayImpact}/10
+              </p>
+            </div>
+            ` : ''}
+
+            <!-- Impact Analysis -->
+            <div class="p-3 bg-gray-700 rounded-lg mb-4">
+              <h4 class="font-semibold text-amber-300 mb-2">Impact Analysis</h4>
+              <p class="text-gray-300 text-sm">
+                This task has an <strong>Impact Score of ${task.impact}/10</strong> - 
+                ${task.impact >= 8 ? 'Very high impact on your goal (critical priority)' : 
+                  task.impact >= 6 ? 'Moderate impact on your goal (medium priority)' : 
+                  'Lower impact on your goal (supporting priority)'}
+              </p>
+              ${task.wasAdjusted ? `
+              <p class="text-yellow-300 text-xs mt-2">
+                ⚠️ Chart position adjusted to ${task.displayImpact}/10 to prevent overlap
+              </p>
+              ` : ''}
+            </div>
+
+            <!-- Complete Task Button -->
+            <div class="p-3 bg-gray-700 rounded-lg">
+              <button onclick="completeTask('${task.task_name.replace(/'/g, "\\'")}', ${task.impact}, ${task.effort})" 
+                      class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center">
+                <span class="mr-2">✅</span>
+                Mark as Complete
+              </button>
+            </div>
+          </div>
+        `;
+      }
+
+      // Function to mark task as complete
+      async function completeTask(taskName, impactScore, effortScore) {
+        const goal = goalInput.value.trim();
+        
+        if (!goal) {
+          showModal('Please set a goal before marking tasks as complete.');
+          return;
+        }
+
+        try {
+          const response = await fetch('/complete-task', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              task_name: taskName,
+              goal: goal,
+              impact_score: impactScore,
+              effort_score: effortScore
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`Server error: ${response.status}`);
+          }
+
+          const result = await response.json();
+          showModal(`✅ Task "${taskName}" marked as complete! Check your dashboard to track progress.`);
+          
+        } catch (error) {
+          console.error('Error completing task:', error);
+          showModal('Failed to mark task as complete. Please try again.');
+        }
+      }
+
+      // Helper functions for task details
+      function getPriorityIcon(impact) {
+        if (impact >= 8) return "🔥";
+        if (impact >= 6) return "⚡";
+        if (impact >= 4) return "📋";
+        return "💭";
+      }
+
+      function getPriorityText(impact) {
+        if (impact >= 8) return "High Priority - Critical Impact";
+        if (impact >= 6) return "Medium Priority - Significant Impact";
+        if (impact >= 4) return "Standard Priority - Moderate Impact";
+        return "Low Priority - Minor Impact";
+      }
+
+      // Custom Modal for alerts
+      function showModal(message) {
+        const modal = document.createElement("div");
+        modal.className =
+          "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
+        modal.innerHTML = `
+                <div class="bg-gray-700 rounded-lg shadow-xl p-6 w-11/12 md:w-1/3 text-center">
+                    <p class="text-white mb-4">${message}</p>
+                    <button class="bg-amber-500 hover:bg-amber-600 text-gray-900 font-bold py-2 px-4 rounded-lg">OK</button>
+                </div>
+            `;
+        modal.querySelector("button").onclick = () =>
+          document.body.removeChild(modal);
+        document.body.appendChild(modal);
+      }
+
+      // Handle window resizing
+      let resizeTimeout;
+      window.addEventListener("resize", () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+          const goal = goalInput.value.trim();
+          const tasks = tasksInput.value
+            .trim()
+            .split("\n")
+            .filter((t) => t.trim() !== "");
+          if (
+            goal &&
+            tasks.length > 0 &&
+            placeholderText.style.display === "none"
+          ) {
+            visualizeBtn.click();
+          }
+        }, 250);
+      });
+    </script>
+    
+    <!-- Tooltip -->
+    <div id="tooltip" class="absolute bg-gray-700 text-white text-xs rounded px-2 py-1 pointer-events-none opacity-0 transition-opacity z-50"></div>
+  </body>
+</html>
