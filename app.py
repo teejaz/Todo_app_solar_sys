@@ -5,7 +5,6 @@ import os
 from dotenv import load_dotenv
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timedelta
-import calendar
 
 # Load environment variables from .env file
 load_dotenv()
@@ -82,7 +81,7 @@ def get_ai_analysis(goal, tasks):
         print(f"OpenAI key length: {len(openai_key)}")
         print(f"OpenAI key starts with: {openai_key[:10]}...")
         # Remove quotes if present
-        openai_key = openai_key.strip("'\"")
+        openai_key = openai_key.strip("'\"🎯")
         print(f"Trying OpenAI API...")
         try:
             result = call_openai_api(goal, tasks, openai_key)
@@ -99,7 +98,7 @@ def get_ai_analysis(goal, tasks):
     if gemini_key:
         print(f"Gemini key length: {len(gemini_key)}")
         print(f"Gemini key starts with: {gemini_key[:10]}...")
-        gemini_key = gemini_key.strip("'\"")
+        gemini_key = gemini_key.strip("'\"🎯")
         print(f"Trying Gemini API...")
         try:
             result = call_gemini_api(goal, tasks, gemini_key)
@@ -126,7 +125,7 @@ def call_openai_api(goal, tasks, api_key):
             "Content-Type": "application/json"
         },
         json={
-            "model": "gpt-3.5-turbo",
+            "model": "gpt-4o-mini",
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0.7
         }
@@ -137,6 +136,7 @@ def call_openai_api(goal, tasks, api_key):
         content = result['choices'][0]['message']['content']
         return parse_ai_response(content)
     else:
+        print(f"OpenAI API Response: {response.text}")
         raise Exception(f"OpenAI API error: {response.status_code}")
 
 def call_gemini_api(goal, tasks, api_key):
@@ -145,7 +145,7 @@ def call_gemini_api(goal, tasks, api_key):
     
     # Updated Gemini API endpoint and model name
     response = requests.post(
-        f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}",
+        f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}",
         headers={"Content-Type": "application/json"},
         json={
             "contents": [{"parts": [{"text": prompt}]}]
@@ -228,7 +228,7 @@ def get_fallback_analysis(goal, tasks):
     random.seed(content_hash)  # Consistent random based on input
     
     # Simple emoji selection
-    emojis = ["📋", "💼", "📚", "🔧", "💡", "�", "🚀c", "⚡", "🎨", "🔍", "📝", "💻", "🌟", "🏆", "🔥"]
+    emojis = ["📋", "💼", "📚", "🔧", "💡", "🎯", "🚀", "⚡", "🎨", "🔍", "📝", "💻", "🌟", "🏆", "🔥"]
     
     analyzed = []
     for i, task in enumerate(tasks):
@@ -376,9 +376,56 @@ def calculate_longest_streak():
     
     return longest
 
+def create_sample_data():
+    """Create sample tasks and goals for testing"""
+    sample_data = [
+        # Goal: Learn Python
+        {"task_name": "Complete Python basics tutorial", "goal": "Learn Python", "impact_score": 8, "effort_score": 5, "completed_at": datetime.utcnow() - timedelta(days=5)},
+        {"task_name": "Build a simple calculator app", "goal": "Learn Python", "impact_score": 7, "effort_score": 6, "completed_at": datetime.utcnow() - timedelta(days=4)},
+        {"task_name": "Read Python best practices guide", "goal": "Learn Python", "impact_score": 6, "effort_score": 3, "completed_at": datetime.utcnow() - timedelta(days=3)},
+        
+        # Goal: Get Fit
+        {"task_name": "Morning run - 5km", "goal": "Get Fit", "impact_score": 9, "effort_score": 7, "completed_at": datetime.utcnow() - timedelta(days=2)},
+        {"task_name": "Gym workout - upper body", "goal": "Get Fit", "impact_score": 8, "effort_score": 8, "completed_at": datetime.utcnow() - timedelta(days=1)},
+        {"task_name": "Yoga session - 30 minutes", "goal": "Get Fit", "impact_score": 7, "effort_score": 4, "completed_at": datetime.utcnow()},
+        
+        # Goal: Build Portfolio
+        {"task_name": "Create personal website homepage", "goal": "Build Portfolio", "impact_score": 9, "effort_score": 6, "completed_at": datetime.utcnow() - timedelta(days=6)},
+        {"task_name": "Design project showcase page", "goal": "Build Portfolio", "impact_score": 8, "effort_score": 5, "completed_at": datetime.utcnow() - timedelta(days=5)},
+        {"task_name": "Add contact form", "goal": "Build Portfolio", "impact_score": 7, "effort_score": 4, "completed_at": datetime.utcnow() - timedelta(days=4)},
+        
+        # Goal: Read More Books
+        {"task_name": "Read 'Atomic Habits' - Chapter 1-3", "goal": "Read More Books", "impact_score": 6, "effort_score": 5, "completed_at": datetime.utcnow() - timedelta(days=3)},
+        {"task_name": "Read 'Deep Work' - Chapter 1-2", "goal": "Read More Books", "impact_score": 7, "effort_score": 5, "completed_at": datetime.utcnow() - timedelta(days=2)},
+        {"task_name": "Write book notes for 'Atomic Habits'", "goal": "Read More Books", "impact_score": 5, "effort_score": 3, "completed_at": datetime.utcnow() - timedelta(days=1)},
+        
+        # Goal: Learn Machine Learning
+        {"task_name": "Complete ML basics course module 1", "goal": "Learn Machine Learning", "impact_score": 8, "effort_score": 7, "completed_at": datetime.utcnow() - timedelta(days=7)},
+        {"task_name": "Implement linear regression from scratch", "goal": "Learn Machine Learning", "impact_score": 9, "effort_score": 8, "completed_at": datetime.utcnow() - timedelta(days=6)},
+        {"task_name": "Study neural networks fundamentals", "goal": "Learn Machine Learning", "impact_score": 8, "effort_score": 6, "completed_at": datetime.utcnow() - timedelta(days=5)},
+    ]
+    
+    # Check if data already exists
+    if TaskCompletion.query.first() is None:
+        for data in sample_data:
+            task = TaskCompletion(
+                task_name=data["task_name"],
+                goal=data["goal"],
+                impact_score=data["impact_score"],
+                effort_score=data["effort_score"],
+                completed_at=data["completed_at"]
+            )
+            db.session.add(task)
+        
+        db.session.commit()
+        print(f"Created {len(sample_data)} sample tasks")
+    else:
+        print("Sample data already exists")
+
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
+        create_sample_data()  # Add sample data
     app.run(debug=True, port=5001, host='0.0.0.0')
 
 # Production deployment

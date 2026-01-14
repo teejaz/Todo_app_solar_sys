@@ -267,6 +267,11 @@
       let currentData = null;
       let taskData = {};
       let currentView = 'analysis';
+      
+      // Ensure visualize button is visible on initial load (analysis view is default)
+      if (visualizeBtn) {
+        visualizeBtn.style.display = '';
+      }
 
       // View switching functions
       function switchView(view) {
@@ -288,29 +293,43 @@
           dashboardSection.classList.add('hidden');
           analysisView.classList.remove('hidden');
           dashboardView.classList.add('hidden');
+          
+          // Show the visualize button in analysis view
+          visualizeBtn.style.display = 'block';
         } else {
           // Show dashboard view
+          console.log('Switching to dashboard view...');
           analysisBtn.className = 'flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors text-gray-300 hover:text-white';
           dashboardBtn.className = 'flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors bg-amber-500 text-gray-900';
           analysisSection.classList.add('hidden');
-          dashboardSection.classList.remove('hidden');
+          dashboardSection.classList.add('hidden'); // Hide the mini dashboard
           analysisView.classList.add('hidden');
-          dashboardView.classList.remove('hidden');
+          dashboardView.classList.remove('hidden'); // Show the full dashboard
+          
+          // Hide the visualize button in dashboard view
+          visualizeBtn.style.display = 'none';
           
           // Load dashboard data when switching to dashboard view
-          loadDashboard();
+          // Use setTimeout to ensure the view is fully rendered before creating the graph
+          console.log('Loading dashboard data...');
+          setTimeout(() => {
+            loadDashboard();
+          }, 100);
         }
       }
 
       // Dashboard functions
       async function loadDashboard() {
         try {
+          console.log('Fetching task stats...');
           const response = await fetch('/task-stats');
           taskData = await response.json();
+          console.log('Task data received:', taskData);
           updateStats();
           createContributionGraph();
           updateGoalBreakdown();
           updateRecentActivity();
+          console.log('Dashboard updated successfully');
         } catch (error) {
           console.error('Failed to load dashboard data:', error);
         }
@@ -321,23 +340,46 @@
       }
 
       function updateStats() {
+        // Update sidebar mini dashboard stats
         document.getElementById('quickCurrentStreak').textContent = taskData.current_streak || 0;
         document.getElementById('quickTotalTasks').textContent = taskData.total_tasks || 0;
-        document.getElementById('currentStreak').textContent = taskData.current_streak || 0;
-        document.getElementById('totalTasks').textContent = taskData.total_tasks || 0;
-        document.getElementById('uniqueDays').textContent = taskData.unique_days || 0;
-        document.getElementById('longestStreak').textContent = taskData.longest_streak || 0;
         
-        const avgPerDay = taskData.unique_days > 0 ? 
-          (taskData.total_tasks / taskData.unique_days).toFixed(1) : 0;
-        document.getElementById('avgPerDay').textContent = avgPerDay;
+        // Update main dashboard stats (only update if elements exist)
+        const uniqueDaysEl = document.getElementById('uniqueDays');
+        const longestStreakEl = document.getElementById('longestStreak');
+        const avgPerDayEl = document.getElementById('avgPerDay');
+        const goalCountEl = document.getElementById('goalCount');
         
-        document.getElementById('goalCount').textContent = Object.keys(taskData.goal_stats || {}).length;
+        if (uniqueDaysEl) {
+          uniqueDaysEl.textContent = taskData.unique_days || 0;
+        }
+        if (longestStreakEl) {
+          longestStreakEl.textContent = taskData.longest_streak || 0;
+        }
+        if (avgPerDayEl) {
+          const avgPerDay = taskData.unique_days > 0 ? 
+            (taskData.total_tasks / taskData.unique_days).toFixed(1) : 0;
+          avgPerDayEl.textContent = avgPerDay;
+        }
+        if (goalCountEl) {
+          goalCountEl.textContent = Object.keys(taskData.goal_stats || {}).length;
+        }
       }
 
       function createContributionGraph() {
         const graphContainer = document.getElementById('contributionGraph');
+        if (!graphContainer) {
+          console.error('Contribution graph container not found');
+          return;
+        }
+        
         graphContainer.innerHTML = ''; // Clear previous content
+        
+        if (!taskData.daily_data || !Array.isArray(taskData.daily_data)) {
+          console.warn('No daily data available for contribution graph');
+          graphContainer.innerHTML = '<p class="text-gray-400 text-center py-4">No activity data available</p>';
+          return;
+        }
         
         const today = new Date();
         const startDate = new Date(today);
@@ -361,7 +403,9 @@
         
         while (currentDate <= today) {
           const dayOfWeek = currentDate.getDay();
-          const weekOfYear = Math.floor((currentDate - startDate) / (7 * 24 * 60 * 60 * 1000));
+          // Calculate weeks since start date
+          const daysDiff = Math.floor((currentDate - startDate) / (24 * 60 * 60 * 1000));
+          const weekOfYear = Math.floor(daysDiff / 7);
           
           const x = weekOfYear * 15 + 10;
           const y = dayOfWeek * 15 + 10;
@@ -389,7 +433,14 @@
           currentDate.setDate(currentDate.getDate() + 1);
         }
         
-        graphContainer.appendChild(svg);
+        // Append SVG to container
+        if (svg.children.length > 0) {
+          graphContainer.appendChild(svg);
+          console.log(`Created contribution graph with ${svg.children.length} boxes`);
+        } else {
+          console.warn('No contribution boxes created');
+          graphContainer.innerHTML = '<p class="text-gray-400 text-center py-4">No activity data to display</p>';
+        }
       }
 
       function showTooltip(event) {
@@ -600,7 +651,18 @@
       }
 
       function createScatterChart(goal, analyzedTasks) {
-        visualizationArea.innerHTML = ""; // Clear previous visualization
+        // Only clear the analysis view content, not the entire visualization area
+        // (which contains both analysisView and dashboardView)
+        const analysisView = document.getElementById('analysisView');
+        if (analysisView) {
+          // Clear any existing chart elements but keep the placeholder
+          const existingCharts = analysisView.querySelectorAll('div[style*="position: relative"], div[style*="position: absolute"]');
+          existingCharts.forEach(el => el.remove());
+          const placeholder = document.getElementById('placeholder-text');
+          if (placeholder) {
+            placeholder.style.display = 'none';
+          }
+        }
 
         const width = visualizationArea.offsetWidth;
         const height = visualizationArea.offsetHeight;
@@ -611,7 +673,12 @@
         chartContainer.style.position = "relative";
         chartContainer.style.width = "100%";
         chartContainer.style.height = "100%";
-        visualizationArea.appendChild(chartContainer);
+        // Append to analysisView, not visualizationArea (to preserve dashboardView structure)
+        if (analysisView) {
+          analysisView.appendChild(chartContainer);
+        } else {
+          visualizationArea.appendChild(chartContainer);
+        }
 
         // Add goal in top-right corner
         const goalBox = document.createElement("div");
